@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head><title>Poll Results</title></head>
+<body>
+<h2>Poll Results</h2>
+<canvas id="resultChart" width="400" height="400"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('resultChart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'pie',
+  data: {
+    labels: {{ options|map(attribute='option_text')|list }},
+    datasets: [{
+      label: 'Votes',
+      data: {{ options|map(attribute='vote_count')|list }},
+      backgroundColor: ['red', 'blue', 'green']
+    }]
+  }
+});
+</script>
+<a href="/dashboard">Back</a>
+</body>
+</html>

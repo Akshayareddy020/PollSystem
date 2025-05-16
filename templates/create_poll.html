@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Poll | PollSystem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+    <header>
+        <div class="logo">PollSystem</div>
+    </header>
+
+    <main>
+        <div class="form-container">
+            <h2>Create a New Poll</h2>
+            <form id="create-poll-form">
+                <input type="text" id="question" placeholder="Poll Question" required />
+                <button type="submit">Create Poll</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 PollSystem. All rights reserved.</p>
+    </footer>
+
+    <script>
+        document.getElementById('create-poll-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+
+            const response = await fetch('/poll/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question }),
+            });
+
+            const data = await response.json();
+
+            if (data.message === 'Poll created successfully') {
+                alert('Poll created successfully!');
+                window.location.href = '/polls';
+            } else {
+                alert('Failed to create poll');
+            }
+        });
+    </script>
+</body>
+</html>

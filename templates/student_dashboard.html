@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Dashboard | Poll App</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/main.js" defer></script>
+</head>
+<body class="student-body">
+    <div class="student-container">
+        <h1 id="welcomeStudent">Welcome, Student 🎓</h1>
+
+        <section class="card">
+            <h2>Available Polls</h2>
+            <div id="studentPolls">
+                Loading polls...
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Answered Polls</h2>
+            <div id="answeredPolls">
+                Loading answered poll summary...
+            </div>
+        </section>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </div>
+
+    <script>
+    // ✅ Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = '/login';
+    });
+
+    // ✅ Set Welcome Message
+    const studentUsername = localStorage.getItem('username') || 'Student';
+    document.getElementById('welcomeStudent').innerHTML = `Welcome, ${studentUsername} 🎓`;
+
+    const studentId = localStorage.getItem('user_id') || 1;
+
+    async function loadAvailablePolls() {
+        const res = await fetch('/poll/available');
+        const polls = await res.json();
+        const container = document.getElementById('studentPolls');
+        container.innerHTML = '';
+
+        if (polls.length === 0) {
+            container.innerHTML = '<p>No polls available currently.</p>';
+            return;
+        }
+
+        polls.forEach(poll => {
+            const div = document.createElement('div');
+            div.className = 'poll-block';
+            div.innerHTML = `
+                <h3>${poll.question}</h3>
+                ${poll.options.map(opt =>
+                    `<label><input type="radio" name="poll_${poll.id}" value="${opt.id}"> ${opt.option_text}</label><br>`
+                ).join('')}
+                <button onclick="submitVote(${poll.id})" class="primary-btn" style="margin-top: 10px;">Submit</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    async function submitVote(pollId) {
+        const selected = document.querySelector(`input[name="poll_${pollId}"]:checked`);
+        if (!selected) {
+            alert("Please select an option first!");
+            return;
+        }
+
+        const res = await fetch('/poll/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                poll_id: pollId,
+                option_id: selected.value,
+                student_id: studentId
+            })
+        });
+
+        const data = await res.json();
+        alert(data.message);
+        loadAvailablePolls(); // Refresh polls
+        loadAnsweredPolls();  // Refresh answered polls
+    }
+
+    async function loadAnsweredPolls() {
+        const res = await fetch(`/poll/answered/${studentId}`);
+        const answered = await res.json();
+        const container = document.getElementById('answeredPolls');
+        container.innerHTML = '';
+
+        if (answered.length === 0) {
+            container.innerHTML = '<p>You have not answered any polls yet.</p>';
+            return;
+        }
+
+        container.innerHTML = `<p><strong>Total answered polls:</strong> ${answered.length}</p>`;
+        answered.forEach(poll => {
+            const div = document.createElement('div');
+            div.className = 'poll-card';
+            div.innerHTML = `
+                <h4>${poll.question}</h4>
+                <p><strong>Your Answer:</strong> ${poll.option_text}</p>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Initial Load
+    loadAvailablePolls();
+    loadAnsweredPolls();
+    </script>
+</body>
+</html>

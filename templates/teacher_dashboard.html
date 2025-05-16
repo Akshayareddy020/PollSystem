@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teacher Dashboard | Poll App</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/main.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="teacher-body">
+    <div class="teacher-container">
+        <h1 id="welcomeMessage">Welcome, Teacher 🎓</h1>
+
+        <section class="card">
+            <h2>Create Poll</h2>
+            <form id="createPollForm">
+                <input type="text" id="question" placeholder="Poll question" required><br>
+                <input type="text" class="option" placeholder="Option 1" required><br>
+                <input type="text" class="option" placeholder="Option 2" required><br>
+                <button type="button" onclick="addOption()">+ Add Option</button><br>
+                <button type="submit" class="primary-btn">Create Poll</button>
+            </form>
+            <p id="createMsg"></p>
+        </section>
+
+        <section class="card">
+            <h2>Manage Polls</h2>
+            <div id="managePolls"></div>
+        </section>
+
+        <!-- ✅ Logout button at bottom -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </div>
+
+    <script>
+    // ✅ Logout button
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = '/login';
+    });
+
+    // ✅ Dynamic welcome name
+    const username = localStorage.getItem('username') || 'Teacher';
+    document.getElementById('welcomeMessage').innerHTML = `Welcome, ${username} 🎓`;
+
+    // ✅ Add more options dynamically
+    function addOption() {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'option';
+        input.placeholder = 'Another option';
+        document.getElementById('createPollForm').insertBefore(input, document.querySelector('#createPollForm button[type="submit"]'));
+    }
+
+    // ✅ Create poll submit
+    document.getElementById('createPollForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const question = document.getElementById('question').value;
+        const options = Array.from(document.querySelectorAll('.option')).map(opt => opt.value);
+        const created_by = localStorage.getItem('teacher_id') || 1;
+
+        const res = await fetch('/poll/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, options, created_by })
+        });
+
+        const data = await res.json();
+        document.getElementById('createMsg').textContent = data.message;
+        loadPolls();
+    });
+
+    // ✅ Delete poll
+    async function deletePoll(pollId) {
+        const res = await fetch('/poll/delete/' + pollId, { method: 'DELETE' });
+        const data = await res.json();
+        alert(data.message);
+        loadPolls();
+    }
+
+    let refreshIntervals = {};
+
+    // ✅ View poll results (with empty pie if no votes)
+    async function viewResults(pollId) {
+        const pollDiv = document.getElementById(`poll_${pollId}`);
+        const resultsSection = pollDiv.querySelector('.results-section');
+
+        // Toggle show/hide results
+        if (resultsSection.innerHTML.trim() !== '') {
+            resultsSection.innerHTML = '';
+            clearInterval(refreshIntervals[pollId]);
+            return;
+        }
+
+        async function fetchAndDraw() {
+            const res = await fetch(`/poll/results/${pollId}`);
+            const results = await res.json();
+
+            resultsSection.innerHTML = `
+                <h4>Poll Results</h4>
+                <canvas id="chart_${pollId}" width="300" height="300"></canvas>
+                <div class="total-votes">Total Votes: ${results.reduce((sum, r) => sum + r.votes, 0)}</div>
+            `;
+
+            let labels = results.map(r => r.option_text);
+            let votes = results.map(r => r.votes);
+
+            const totalVotes = votes.reduce((sum, v) => sum + v, 0);
+
+            // ✅ If no votes yet
+            if (totalVotes === 0) {
+                labels = ['No Votes Yet'];
+                votes = [1];
+            }
+
+            const ctx = document.getElementById(`chart_${pollId}`).getContext('2d');
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: votes,
+                        backgroundColor: ['#e0e0e0', '#00bcd4', '#2196f3', '#ff9800', '#8bc34a', '#607d8b', '#e91e63', '#9c27b0'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (labels.length === 1 && labels[0] === 'No Votes Yet') {
+                                        return 'No Votes Yet';
+                                    }
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.parsed;
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${value} votes (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        await fetchAndDraw();
+        refreshIntervals[pollId] = setInterval(fetchAndDraw, 5000); // auto-refresh results
+    }
+
+    // ✅ Load all created polls
+    async function loadPolls() {
+        const res = await fetch('/poll/all');
+        const polls = await res.json();
+        const container = document.getElementById('managePolls');
+        container.innerHTML = '';
+
+        if (polls.length === 0) {
+            container.innerHTML = '<p>No polls created yet.</p>';
+            return;
+        }
+
+        polls.forEach(poll => {
+            const div = document.createElement('div');
+            div.id = `poll_${poll.id}`;
+            div.className = 'poll-card';
+            div.innerHTML = `
+                <h3>${poll.question}</h3>
+                <div class="poll-card-actions">
+                    <button onclick="deletePoll(${poll.id})" class="danger-btn">Delete</button>
+                    <button onclick="viewResults(${poll.id})" class="secondary-btn">View Results</button>
+                </div>
+                <div class="results-section"></div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // ✅ Load polls on page start
+    loadPolls();
+    </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register | Poll App</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/main.js" defer></script>
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <h2>Create an Account</h2>
+        <form id="registerForm">
+            <input type="text" id="regUsername" placeholder="Username" required><br>
+            <input type="password" id="regPassword" placeholder="Password" required><br>
+            <select id="regRole" required>
+                <option value="" disabled selected>Select Role</option>
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+            </select><br>
+            <button type="submit">Register</button>
+        </form>
+        <p id="regMsg"></p>
+
+        <!-- ✅ Add login link -->
+        <p class="auth-link-text">
+            Already have an account? <a href="/login" class="auth-link">Login</a>
+        </p>
+    </div>
+</body>
+</html>
